@@ -1,5 +1,9 @@
 # Changelog
 
+## Reliability follow-up — 2026-10-28
+
+The owner reports one full Raspberry Pi listening night with zero stutters, followed by continued clean playback after the stream-lifecycle fix. This build may have resolved that setup’s problem; prior symptoms could be device/configuration-specific. Cause and wider compatibility remain unconfirmed; output combination was not specified. Documentation update only, with no replacement of release binaries or checksums.
+
 ## 0.9.0-alpha.1 — Initial public alpha
 
 - Publish the Android local host/controller foundation and fuller Linux backend.

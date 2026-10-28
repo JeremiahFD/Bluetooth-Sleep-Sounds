@@ -16,7 +16,7 @@ A major planned feature is **sending sleep sounds from one host to several Bluet
 
 **Multiple-Bluetooth-speaker output is a roadmap goal, not a finished feature in this alpha.** Android currently follows one system-selected output. Linux has an experimental wired-plus-Bluetooth combination. Reliable multi-speaker playback, synchronization and device limits still need development and hardware testing. Suggestions and compatible-device reports are welcome.
 
-**Early alpha:** intermittent audio stutters and output dropouts are still under investigation. Start with one output and test your setup before relying on it overnight. No recordings are included.
+**Early alpha — promising reliability update:** after the recent audio-stream lifecycle fix, one Raspberry Pi setup completed a full night with **zero reported stutters**, with playback still reported clear afterward. This build may have resolved the issue on that setup; earlier stutters may be device/configuration-specific. This is a user listening report, not proof of a universal fix. Test your own hardware. No recordings are included.
 
 [Download the Android APK](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/releases) · [Report a bug or suggest an idea](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/issues) · [Roadmap](#roadmap) · [License](LICENSE)
 
@@ -90,6 +90,8 @@ python3 server.py
 Replace the placeholder with your host's address. Open `http://<your-host-address>:8080/ui/` and import your own files. Data defaults to `~/.local/share/sleep-sounds`; use `SLEEP_SOUNDS_DATA` to choose another directory. On a headless systemd installation, follow [Linux setup](docs/PORTABILITY.md). Do not run disk-imaging tools or copy another person's Bluetooth configuration.
 
 ## Known issues and stutters
+
+**October 28, 2026 follow-up:** the owner reports a completely stutter-free night on the Raspberry Pi and continued clean playback. The recent combined-output helper changes remove unused speaker branches and recreate them when needed. Those changes are a plausible explanation for the improvement, but the exact cause has not been isolated. **The current build appears to have possibly resolved this setup’s stutters.** Earlier problems could depend on the particular device, radios, outputs or configuration. The speaker/output combination for this overnight report was not specified, and this is not an Android overnight result or an instrumented end-to-end recording. More reports and longer tests are welcome.
 
 - Intermittent short stutters, repeating fragments, pops and Bluetooth dropouts have occurred. Some failures appeared only after hours of dual-output playback. A clean short test does not establish overnight reliability.
 - Source-file defects/loop boundaries, decoder buffering, the audio graph, independent output clocks, Bluetooth links, Wi-Fi coexistence, USB resets and power stability can produce similar symptoms. There is no single proven root cause for every reported interruption.

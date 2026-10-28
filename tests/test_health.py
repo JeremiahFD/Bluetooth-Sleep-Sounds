@@ -78,3 +78,30 @@ class HealthCounterIdentityTests(unittest.TestCase):
             def read(self,_):return json.dumps({'selected':'private.wav','active_output':'secret address','position':18001.25,'duration':43200}).encode()
         with patch.object(health.urllib.request,'urlopen',return_value=Response()):result=health.api_state()
         self.assertNotIn('private',json.dumps(result));self.assertNotIn('secret',json.dumps(result));self.assertEqual(result['position_seconds'],18001.25)
+
+
+class GraphContextTests(unittest.TestCase):
+    def node(self,id=42,serial=101,name='output.sleep_sounds_example_wired',media='Audio/Sink'):
+        return {'id':id,'type':'PipeWire:Interface:Node','info':{'state':'running','props':{'object.serial':serial,'node.name':name,'media.class':media,'clock.name':'private-clock','node.group':'private-group','node.latency':'2048/48000','audio.rate':48000}}}
+    def test_error_can_be_assigned_to_branch_and_lifetime_without_names(self):
+        serials,details=health.graph_snapshot(json.dumps([self.node()]))
+        self.assertEqual(serials,{'42':'101'});self.assertEqual(details['42']['role'],'wired_member')
+        self.assertEqual(details['42']['serial'],'101');self.assertEqual(details['42']['node.latency'],'2048/48000')
+        self.assertNotIn('private',json.dumps(details));self.assertNotIn('sleep_sounds_example',json.dumps(details))
+    def test_bluetooth_address_is_hashed_and_never_persisted(self):
+        row=self.node(name='bluez_output.00_11_22_33_44_55.1')
+        _,details=health.graph_snapshot(json.dumps([row]));self.assertEqual(details['42']['role'],'bluetooth_sink')
+        self.assertNotIn('00_11_22',json.dumps(details));self.assertEqual(len(details['42']['name_fingerprint']),16)
+    def test_node_id_reuse_has_new_identity_and_role(self):
+        _,a=health.graph_snapshot(json.dumps([self.node()]))
+        _,b=health.graph_snapshot(json.dumps([self.node(serial=202,name='bluez_output.example')]))
+        self.assertNotEqual(a['42']['serial'],b['42']['serial']);self.assertNotEqual(a['42']['role'],b['42']['role'])
+    def test_profiler_timing_keeps_metrics_and_ignores_name(self):
+        text='R 42 2048 48000 12us 0.4ms 0.2 0.01 9 F32LE private device\nC 42 0 0 --- --- --- --- 0 name\n'
+        result=health.graph_timing(text);self.assertEqual(result['42']['errors'],9);self.assertEqual(result['42']['quantum_frames'],2048)
+        self.assertEqual(result['42']['busy'],'0.4ms');self.assertNotIn('private',json.dumps(result))
+    def test_partial_and_malformed_graphs_do_not_create_context(self):
+        for raw in ['{','{}',json.dumps([{'id':42,'type':'PipeWire:Interface:Node','info':None}]),json.dumps([{'type':'PipeWire:Interface:Node','info':7}])]:self.assertEqual(health.graph_snapshot(raw),({},{}))
+    def test_non_audio_names_are_not_saved_and_rows_are_bounded(self):
+        rows=[self.node(id=n,media='Video/Source',name='private-camera')for n in range(300)]
+        serials,details=health.graph_snapshot(json.dumps(rows));self.assertEqual(len(serials),256);self.assertEqual(details,{})

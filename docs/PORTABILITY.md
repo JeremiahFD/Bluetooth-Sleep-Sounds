@@ -29,7 +29,7 @@ The shipped defaults are synthetic, deliberately nonfunctional example targets, 
 
 ## Optional monitoring
 
-`scripts/sleep-sounds-health.py` and its service template provide bounded local diagnostics. Review paths, CPU/memory limits, journal retention and exported contents before enabling. Monitoring does not prove the final speaker was uninterrupted. No historical device logs are included.
+`scripts/sleep-sounds-health.py` and its service template provide bounded local diagnostics. Review paths, CPU/memory limits, journal retention and exported contents before enabling. The current source logger also records privacy-safe node roles/lifetime IDs and graph timing from its existing minute probes, so errors can be correlated after reboot. Raw device names/addresses are not included in those fields. Monitoring does not prove the final speaker was uninterrupted. No historical device logs are included.
 
 ## Build Android
 

@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from pathlib import Path
 import signal
 import socket
@@ -103,14 +104,58 @@ def api_state():
     return result
 
 
-def graph_serials(text):
+def graph_snapshot(text):
+    """Retain node lifetime/role and bounded timing configuration, not device names."""
     try:
         rows = json.loads(text or '[]')
-        return {str(row['id']): str(row['info']['props']['object.serial']) for row in rows
-                if row.get('type') == 'PipeWire:Interface:Node'
-                and row.get('info', {}).get('props', {}).get('object.serial') is not None}
+        if not isinstance(rows,list):return {},{}
+        serials={};details={}
+        for row in rows[:256]:
+            if not isinstance(row,dict) or row.get('type')!='PipeWire:Interface:Node':continue
+            info=row.get('info') or {}
+            if not isinstance(info,dict):continue
+            props=info.get('props') or {}
+            if not isinstance(props,dict):continue
+            key=str(row.get('id',''));serial=str(props.get('object.serial',''))
+            if not key.isdigit() or not serial.isdigit() or len(serial)>20:continue
+            serials[key]=serial
+            media=props.get('media.class','');name=str(props.get('node.name',''))
+            if media not in ('Audio/Sink','Audio/Source','Stream/Output/Audio','Stream/Input/Audio'):continue
+            if name.startswith('output.sleep_sounds') and name.endswith('_wired'):role='wired_member'
+            elif name.startswith('output.sleep_sounds') and name.endswith('_bluetooth'):role='bluetooth_member'
+            elif name.startswith('sleep_sounds') and media=='Audio/Sink':role='combined_sink'
+            elif name.startswith('alsa_output.'):role='wired_sink'
+            elif name.startswith('bluez_output.'):role='bluetooth_sink'
+            else:role='playback_stream' if media=='Stream/Output/Audio' else 'other_audio'
+            item={'serial':serial,'role':role,'state':info.get('state') if info.get('state') in ('running','idle','suspended','error','creating') else 'unknown',
+                  'name_fingerprint':hashlib.sha256(name.encode()).hexdigest()[:16]}
+            for prop,label in [('node.group','group_fingerprint'),('clock.name','clock_fingerprint')]:
+                value=props.get(prop)
+                if isinstance(value,str):item[label]=hashlib.sha256(value.encode()).hexdigest()[:16]
+            for prop in ('node.latency','node.force-quantum','node.force-rate','audio.rate','audio.channels'):
+                value=str(props.get(prop,''))
+                if re.fullmatch(r'[0-9]{1,8}(?:/[0-9]{1,8})?',value):item[prop]=value
+            details[key]=item
+        return serials,details
     except (ValueError, TypeError, KeyError):
-        return {}
+        return {},{}
+
+
+def graph_serials(text):
+    return graph_snapshot(text)[0]
+
+
+def graph_timing(text):
+    """pw-top profiler readings only; discard format and arbitrary node-name columns."""
+    result={}
+    for line in (text or '').splitlines():
+        p=line.split()
+        if len(p)<10 or p[0]not in ('R','S','I','E') or not all(p[i].isdigit()for i in (1,2,3,8)):continue
+        item={'active':p[0]=='R','quantum_frames':int(p[2]),'rate_hz':int(p[3]),'errors':int(p[8])}
+        for index,label in [(4,'wait'),(5,'busy'),(6,'wait_over_quantum'),(7,'busy_over_quantum')]:
+            if re.fullmatch(r'[0-9.+eE-]{1,16}(?:us|ms|s)?',p[index]):item[label]=p[index]
+        result[p[1]]=item
+    return result
 
 
 def graph_increments(previous, current, serials):
@@ -226,12 +271,15 @@ def main():
                 # Allow a profiler update before reporting counts as observed.
                 graph_text = command(['pw-top', '-b', '-n', '2'], timeout=4)
                 graph = graph_errors(graph_text)
-                serials = graph_serials(command(['pw-dump'], timeout=4, max_chars=2 * 1024 * 1024))
+                serials,details = graph_snapshot(command(['pw-dump'], timeout=4, max_chars=2 * 1024 * 1024))
+                timing=graph_timing(graph_text)
+                nodes={key:{**detail,'timing':timing.get(key)} for key,detail in details.items()}
                 increments = {}
                 if serials:
                     increments, previous_graph = graph_increments(previous_graph, graph, serials)
                 if increments:
-                    emit('audio_graph_errors_increased', increments=increments)
+                    emit('audio_graph_errors_increased', increments=increments,
+                         nodes={key:nodes[key]for key in increments if key in nodes})
                 emit('health', temperature_millic=read('/sys/class/thermal/thermal_zone0/temp'),
                      cpu_khz=read('/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq'),
                      load=read('/proc/loadavg'), cpu_ticks=read('/proc/stat').splitlines()[0],
@@ -239,7 +287,7 @@ def main():
                      disk_free_bytes=stat.f_bavail * stat.f_frsize,
                      app_cpu=read(cgroup / 'cpu.stat'), app_memory_bytes=read(cgroup / 'memory.current'),
                      app_io=read(cgroup / 'io.stat'), app_processes=process_usage(cgroup), graph_errors=graph,
-                     graph_probe_ok=bool(graph), graph_identity_probe_ok=bool(serials))
+                     graph_probe_ok=bool(graph), graph_identity_probe_ok=bool(serials), graph_nodes=nodes)
             iteration += 1
         except Exception as error:
             emit('observer_sample_error', error_class=type(error).__name__)

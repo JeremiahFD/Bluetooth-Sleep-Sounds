@@ -1,6 +1,20 @@
 # Sleep Sounds
 
-A local-first sleep-audio player with an Android app and a self-hosted Linux backend. Play your own recordings, control a nearby host from your phone, and experiment with profiles, effects and speaker routing.
+**Turn a Raspberry Pi or spare Android device, including a Google TV box, into a dedicated sleep-sound host that sends audio to Bluetooth speakers. Control it from your phone, tablet or another computer.**
+
+## What it is mainly made for
+
+This project grew out of a bedroom setup: leave a small, inexpensive device near your speakers, load long rain, thunder or other sleep recordings, and let it play through the night. Use your phone to choose sounds, change volume, set a sleep timer or adjust supported effects.
+
+**The Pi or Android box plays the audio; your phone is the remote.** Your phone does not have to stream the recording or keep the app open. Already-imported audio plays locally without internet; remote control normally uses your local network. The aim is to put spare hardware to work as a dedicated bedside sound system.
+
+`Phone / tablet / browser → local-network controls → Raspberry Pi or Android / Google TV box → Bluetooth speaker`
+
+### Main future goal: multiple Bluetooth speakers at once
+
+A major planned feature is **sending sleep sounds from one host to several Bluetooth speakers simultaneously**. The goal is to fill a room with sound, save speaker groups, adjust synchronization and keep the remaining speakers playing when one disconnects. Later, separate sounds could go to separate outputs: rain on one speaker, thunder on another, and crickets on a third.
+
+**Multiple-Bluetooth-speaker output is a roadmap goal, not a finished feature in this alpha.** Android currently follows one system-selected output. Linux has an experimental wired-plus-Bluetooth combination. Reliable multi-speaker playback, synchronization and device limits still need development and hardware testing. Suggestions and compatible-device reports are welcome.
 
 **Early alpha:** intermittent audio stutters and output dropouts are still under investigation. Start with one output and test your setup before relying on it overnight. No recordings are included.
 

@@ -29,6 +29,9 @@ class AndroidHostService : Service() {
     private lateinit var focus: AudioFocusRequest
     private lateinit var session: MediaSession
     private var server: HostHttpServer? = null
+    private val storageLock=java.util.concurrent.locks.ReentrantLock()
+    @Volatile private var maintenancePending=false
+    private fun <T> withStorage(block:()->T):T { check(storageLock.tryLock()){ "An import or maintenance operation is in progress" };try{return block()}finally{storageLock.unlock()} }
     private var player: MediaPlayer? = null
     private lateinit var library:HostLibrary
     private var equalizer:android.media.audiofx.Equalizer?=null
@@ -66,18 +69,19 @@ class AndroidHostService : Service() {
         "/api/outputs"->JSONObject().put("selected","android/system").put("devices",JSONArray().put(JSONObject().put("name","android/system").put("description","Android system output (HDMI / Bluetooth)")))
         "/api/alarm"->JSONObject().put("supported",false)
         "/api/app-release"->JSONObject().put("available",false).put("message","Android alpha build "+BuildConfig.VERSION_NAME+". Updates are installed separately during testing.")
-        "/api/system"->JSONObject().put("host",name()).put("model",Build.MODEL).put("os","Android "+Build.VERSION.RELEASE).put("app_version",BuildConfig.VERSION_NAME).put("uptime_seconds",SystemClock.elapsedRealtime()/1000).put("storage_free_bytes",tracksDir.usableSpace).put("storage_total_bytes",tracksDir.totalSpace).put("audio_output","Android system output").put("capabilities",JSONObject().put("restart_app",false).put("restart_host",false).put("shutdown",false))
+        "/api/system"->JSONObject().put("host",name()).put("model",Build.MODEL).put("os","Android "+Build.VERSION.RELEASE).put("app_version",BuildConfig.VERSION_NAME).put("uptime_seconds",SystemClock.elapsedRealtime()/1000).put("storage_free_bytes",tracksDir.usableSpace).put("storage_total_bytes",tracksDir.totalSpace).put("audio_output","Android system output").put("capabilities",JSONObject().put("restart_app",true).put("reset_settings",true).put("factory_reset",true).put("delete_audio",true).put("restart_host",false).put("shutdown",false))
         else->null
     }
     private val artDir get()=File(filesDir,"host-artwork").apply{mkdirs()}
     private fun artFile(key:String):File {audioFile(key);return File(artDir,java.security.MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).joinToString(""){"%02x".format(it)}+".img")}
     fun artworkUrl(key:String):String?=if(artFile(key).isFile)"/api/artwork?track="+android.net.Uri.encode(key)else null
     fun artwork(key:String):ByteArray?=artFile(key).takeIf{it.isFile}?.readBytes()
-    fun importArtwork(key:String,input:InputStream,length:Long):JSONObject {
+    fun importArtwork(key:String,input:InputStream,length:Long):JSONObject = withStorage {
+        check(!maintenancePending){"Maintenance is pending"}
         require(audioFile(key).isFile&&length in 1..8388608);val bytes=ByteArray(length.toInt());var at=0;while(at<bytes.size){val n=input.read(bytes,at,bytes.size-at);require(n>0);at+=n}
         val options=android.graphics.BitmapFactory.Options().apply{inJustDecodeBounds=true};android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,options)
         require(options.outWidth in 1..8192&&options.outHeight in 1..8192&&options.outMimeType in listOf("image/jpeg","image/png","image/webp")){"Unsupported artwork"}
-        val file=artFile(key);val tmp=File(file.path+".part");try{tmp.writeBytes(bytes);check(tmp.renameTo(file))}finally{tmp.delete()};prefs.edit().putLong("library_revision",prefs.getLong("library_revision",0)+1).apply();return JSONObject().put("stored",true)
+        val file=artFile(key);val tmp=File(file.path+".part");try{tmp.writeBytes(bytes);check(tmp.renameTo(file))}finally{tmp.delete()};prefs.edit().putLong("library_revision",prefs.getLong("library_revision",0)+1).apply();return@withStorage JSONObject().put("stored",true)
     }
     private var ready = false
     private var preparing = false
@@ -164,7 +168,8 @@ class AndroidHostService : Service() {
         }
         return result
     }
-    @Synchronized fun importAudio(name:String,input:InputStream,length:Long):JSONObject {
+    fun importAudio(name:String,input:InputStream,length:Long):JSONObject = withStorage {
+        check(!maintenancePending){"Maintenance is pending"}
         val destination=audioFile(name)
         require(destination.extension.lowercase() in listOf("m4a","aac","mp3","flac","wav","ogg","opus","mp4","webm")){"Unsupported audio extension"}
         require(!destination.exists()){"That recording already exists"}
@@ -179,8 +184,49 @@ class AndroidHostService : Service() {
             check(temp.renameTo(destination)){"Could not save recording"}
             synchronized(catalog){catalog.remove(temp.name)}
             prefs.edit().putLong("library_revision",prefs.getLong("library_revision",0)+1).apply()
-            note("Audio import completed");return JSONObject().put("track",destination.name).put("id",destination.name).put("stored",true)
+            note("Audio import completed");return@withStorage JSONObject().put("track",destination.name).put("id",destination.name).put("stored",true)
         } finally {temp.delete();synchronized(catalog){catalog.remove(temp.name)}}
+    }
+    private fun reloadPlaybackSettings(){
+        volume=prefs.getInt("volume",50).coerceIn(0,100);loop=prefs.getBoolean("loop",true)
+        selected=prefs.getString("selected","").orEmpty();gainDb=prefs.getFloat("gain_db",0f).toDouble()
+        bypass=prefs.getBoolean("bypass",false);eqEnabled=prefs.getBoolean("eq_enabled",false)
+        eqLevels=JSONArray(prefs.getString("eq_levels","[0,0,0,0,0]"));playMode=prefs.getString("play_mode",if(loop)"loop"else"once").orEmpty()
+        activeProfile="none";revision++;failure=null;synchronized(catalog){catalog.clear()}
+        library=HostLibrary(this,this);update()
+    }
+    private fun maintenance(body:JSONObject):JSONObject {
+        val action=body.optString("action")
+        val phrases=mapOf("reset_settings" to "RESET SETTINGS","factory_reset" to "FACTORY RESET","delete_audio" to "DELETE ALL AUDIO")
+        require(action=="restart_app"||phrases.containsKey(action)){"Unsupported maintenance action"}
+        require(body.optBoolean("confirm")&&(action=="restart_app"||body.optString("confirmation")==phrases[action])){"Confirm this action and its warning"}
+        withStorage { maintenancePending=true }
+        // Acknowledge before closing the current HTTP server. All imports/mutations are gated.
+        main.postDelayed({
+            try {withStorage {
+                stopPlayback()
+                if(action=="delete_audio"){
+                    val files=listOf(tracksDir,artDir).flatMap { folder ->
+                        check(folder.absoluteFile==folder.canonicalFile){"Linked media directory"}
+                        folder.listFiles()?.filter{it.isFile}?.onEach{check(it.absoluteFile==it.canonicalFile){"Linked media file"}}?:emptyList()
+                    }
+                    files.forEach{check(it.delete()){ "Could not delete all audio" }}
+                    selected="";persist()
+                }
+                if(action=="reset_settings"||action=="factory_reset"){
+                    val edit=prefs.edit()
+                    listOf("volume","loop","selected","gain_db","bypass","eq_enabled","eq_levels","play_mode","sleep_minutes","allow_track_deletion").forEach{edit.remove(it)}
+                    check(edit.commit()){ "Could not reset settings" }
+                    if(action=="factory_reset")check(getSharedPreferences("host_library",MODE_PRIVATE).edit().clear().commit())
+                    else library.resetPreferences()
+                }
+                reloadPlaybackSettings()
+                server?.close();server=HostHttpServer(this,this).also{it.start()}
+                note("App maintenance completed: "+action)
+            }} catch(e:Exception){failure="App maintenance failed: "+e.javaClass.simpleName;note(failure!!)}
+            finally{maintenancePending=false}
+        },1000)
+        return JSONObject().put("accepted",true).put("action",action)
     }
     private fun persist(){prefs.edit().putInt("volume",volume).putBoolean("loop",loop).putString("selected",selected).apply()}
     private fun position()=if(ready)try{player?.currentPosition?.toDouble()?.div(1000)?:0.0}catch(_:Exception){0.0}else 0.0
@@ -221,6 +267,8 @@ class AndroidHostService : Service() {
     private fun timer(minutes:Double){require(minutes.isFinite()&&minutes in 0.0..1440.0);main.removeCallbacks(timerTask);timerElapsed=if(minutes==0.0)null else SystemClock.elapsedRealtime()+(minutes*60000).toLong();timerElapsed?.let{main.postDelayed(timerTask,(minutes*60000).toLong())};note("Sleep timer changed")}
     private fun next(delta:Int){val list=tracks();require(list.length()>0);val ids=(0 until list.length()).map{list.getJSONObject(it).getString("id")};val n=if(playMode=="shuffle")ids.filter{it!=selected}.randomOrNull()?:ids.first()else ids[Math.floorMod(ids.indexOf(selected)+delta,ids.size)];play(n);library.played(n,activeProfile,newPlay=true)}
     fun mutate(path:String,body:JSONObject):Any {
+        check(!maintenancePending){"App maintenance is in progress. Reconnect shortly."}
+        if(path=="/api/system-action")return maintenance(body)
         library.mutate(path,body)?.let{return it}
         when(path){
             "/api/play","/api/sleep" -> {val pid=body.optString("profile","none");library.data(pid);account();activeProfile=pid;play(body.getString("track"));library.played(selected,pid,newPlay=true);if(path=="/api/sleep")timer(body.getDouble("minutes"))}

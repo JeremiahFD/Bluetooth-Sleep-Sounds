@@ -8,6 +8,9 @@ import shutil
 import socket
 import subprocess
 import time
+import sys
+import uuid
+from host_maintenance import CONFIRMATIONS, validate_request
 
 STARTED=time.monotonic()
 
@@ -80,16 +83,26 @@ def system_snapshot(c):
         'storage_free_bytes':usage.free,'storage_total_bytes':usage.total,'addresses':addresses,'interfaces':network,
         'audio_output':c.output,'bluetooth':dict(c.bt),'power':dict(c.power),
         'remote_count':len(c.remote_store.snapshot()['remotes']),
-        'capabilities':{'restart_app':enabled,'restart_host':enabled and Path('/usr/local/sbin/sleep-sounds-power').is_file(),
+        'capabilities':{'restart_app':enabled and bool(shutil.which('systemd-run')),
+                        **{action:enabled and bool(shutil.which('systemd-run')) for action in CONFIRMATIONS},
+                        'restart_host':enabled and Path('/usr/local/sbin/sleep-sounds-power').is_file(),
                         'shutdown':enabled and Path('/usr/local/sbin/sleep-sounds-power').is_file()}}
 
 def system_action(c,data):
     action=data.get('action')
-    if action not in ('restart_app','restart_host','shutdown') or data.get('confirm') is not True:
+    if action not in ('restart_app','restart_host','shutdown',*CONFIRMATIONS) or data.get('confirm') is not True:
         raise ValueError('Confirm a supported system action.')
+    if action in CONFIRMATIONS:validate_request(data)
     if not system_snapshot(c)['capabilities'][action]:raise ValueError('System actions are not enabled on this host.')
-    if action=='restart_app':
-        subprocess.Popen(['systemctl','--user','restart','sleep-sounds.service'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    if action=='restart_app' or action in CONFIRMATIONS:
+        # Independent transient unit survives stopping the player. Stop finishes before
+        # modifying files; restarting reloads clean state instead of stale in-memory data.
+        command=['systemd-run','--user','--collect','--on-active=1s',
+                 '--unit=sleep-sounds-maintenance-'+uuid.uuid4().hex,
+                 sys.executable,str(Path(__file__).with_name('host_maintenance.py')),
+                 '--data',str(c.data.resolve()),'--action',action]
+        result=subprocess.run(command,capture_output=True,timeout=5)
+        if result.returncode:raise ValueError('App maintenance could not be scheduled. No files were changed.')
     else:
         result=subprocess.run(['sudo','-n','/usr/local/sbin/sleep-sounds-power',action],capture_output=True,timeout=5)
         if result.returncode:raise ValueError('Host power action unavailable. Check its local permission setup.')

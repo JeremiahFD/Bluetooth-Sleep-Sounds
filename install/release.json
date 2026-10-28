@@ -1,8 +1,8 @@
 {
   "package": "local.sleepsounds.controller",
-  "version_code": 12,
-  "version_name": "0.9.0-alpha.1",
-  "sha256": "01dcfc2de3b03da561a6f30c8e410f2ec090fd3e328ba96d8a9b10502f762e4f",
+  "version_code": 13,
+  "version_name": "0.9.0-alpha.2",
+  "sha256": "a77c870308c8165d5620d091d6e52c5896f3befc50f7f5725644c1c0571b824a",
   "signer_sha256": "4eddb8797f8d3b9d318b72947013a599486657794a825e6ed54a8849eb535553",
   "mandatory": false
 }

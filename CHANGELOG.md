@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0-alpha.2 — Host connections and maintenance
+
+- Remember a preferred playback host per installation; never silently substitute another host.
+- Verify/discover hosts and show Connecting within one 20-second budget, with cancellation and stale-result guards.
+- Replace the gray toolbar with a compact themed host selector.
+- Fix controller Add assignment behavior with unsaved changes and explicit input capture.
+- Add host-capability-gated restart, settings reset, factory reset and separate delete-all-audio controls with clear confirmations.
+- Linux maintenance is opt-in and interrupts playback; Android maintains its foreground host service.
+
+
 ## Reliability follow-up — 2026-10-28
 
 The owner reports one full Raspberry Pi listening night with zero stutters, followed by continued clean playback after the stream-lifecycle fix. This build may have resolved that setup’s problem; prior symptoms could be device/configuration-specific. Cause and wider compatibility remain unconfirmed; output combination was not specified. Documentation update only, with no replacement of release binaries or checksums.

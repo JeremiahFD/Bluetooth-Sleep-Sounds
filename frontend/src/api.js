@@ -56,7 +56,7 @@ export class SleepSoundsApi {
   deleteTrack(track) { return this.request('/api/track-delete',{track,confirm:true}); }
   diagnostics() { return this.request('/api/diagnostics-export'); }
   system() { return this.request('/api/system'); }
-  systemAction(action) { return this.request('/api/system-action',{action,confirm:true}); }
+  systemAction(action,confirmation) { return this.request('/api/system-action',{action,confirm:true,confirmation}); }
   appRelease() { return this.request('/api/app-release'); }
   profileDataFor(profile) { return this.request('/api/profile-data?profile='+encodeURIComponent(profile)); }
   saveProfilePreferences(profile,preferences) { return this.request('/api/profile-data',{profile,preferences}); }

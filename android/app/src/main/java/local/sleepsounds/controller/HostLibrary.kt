@@ -19,6 +19,7 @@ class HostLibrary(context:Context, private val host:AndroidHostService) {
             save()
         }
     }
+    fun resetPreferences(){state.getJSONObject("profiles").let{profiles->profiles.keys().forEach{profiles.getJSONObject(it).put("preferences",JSONObject())}};save()}
     private fun id()=UUID.randomUUID().toString().replace("-","").take(16)
     private fun newProfile(name:String)=JSONObject().put("name",name).put("preferences",JSONObject()).put("favorites",JSONObject()).put("ratings",JSONObject()).put("stats",JSONObject())
     private fun save(){check(prefs.edit().putString("state",state.toString()).commit()){"Could not save host library"}}

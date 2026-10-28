@@ -31,8 +31,16 @@ class SavedDevices(context: Context, legacy: SharedPreferences) {
     } catch (_: Exception) { emptyList() }
     fun get(key: String) = all().firstOrNull { it.key == key }
     fun selected() = prefs.getString("selected", "pi") ?: "pi"
+    fun preferred()=prefs.getString("preferred",null)?.takeIf{get(it)!=null}
+    fun prefer(key:String?){require(key==null||get(key)!=null);prefs.edit().putString("preferred",key).apply()}
+    @Synchronized fun discovered(result:HostProbe.Result):Device {
+        val existing=all().firstOrNull{it.identity==result.identity}
+        if(existing!=null){if(existing.key!="onn"&&existing.lan!=result.address){existing.alternate=existing.lan;existing.lan=result.address;update(existing)};return existing}
+        val row=Device("host-"+result.identity,result.name.ifBlank{"Sleep device"},result.address,identity=result.identity)
+        save(all()+row);return row
+    }
     fun select(key: String) { require(get(key) != null); prefs.edit().putString("selected", key).apply() }
-    fun update(device: Device) { save(all().map { if (it.key == device.key) device else it }) }
+    @Synchronized fun update(device: Device) { save(all().map { if (it.key == device.key) device else it }) }
     private fun save(devices: List<Device>) {
         val array = JSONArray()
         devices.forEach { d -> array.put(JSONObject().put("key", d.key).put("name", d.name)

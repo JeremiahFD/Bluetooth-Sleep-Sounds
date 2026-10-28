@@ -14,7 +14,7 @@ class HostDiscovery(context: Context) {
     data class Host(val name: String, val address: String)
 
     @Suppress("DEPRECATION")
-    fun find(): List<Host> {
+    fun find(deadline:Long=android.os.SystemClock.elapsedRealtime()+6000): List<Host> {
         check(Looper.myLooper() != Looper.getMainLooper())
         val found = linkedMapOf<String, NsdServiceInfo>()
         val hosts = linkedMapOf<String, Host>()
@@ -36,10 +36,11 @@ class HostDiscovery(context: Context) {
         val main = Handler(Looper.getMainLooper())
         try {
             manager.discoverServices("_sleep-sounds._tcp.", NsdManager.PROTOCOL_DNS_SD, listener)
-            main.postDelayed({ ended.countDown() }, 4000)
-            ended.await(5, TimeUnit.SECONDS)
+            main.postDelayed({ ended.countDown() }, minOf(4000L,maxOf(1L,deadline-android.os.SystemClock.elapsedRealtime())))
+            ended.await(maxOf(1L,deadline-android.os.SystemClock.elapsedRealtime()), TimeUnit.MILLISECONDS)
             // Serialize resolutions: older Android versions allow only one outstanding resolve.
             for (service in synchronized(found) { found.values.toList() }) {
+                if(android.os.SystemClock.elapsedRealtime()>=deadline)break
                 val resolved = CountDownLatch(1)
                 manager.resolveService(service, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(info: NsdServiceInfo, code: Int) { resolved.countDown() }
@@ -52,7 +53,7 @@ class HostDiscovery(context: Context) {
                         resolved.countDown()
                     }
                 })
-                if(!resolved.await(700, TimeUnit.MILLISECONDS)) break
+                if(!resolved.await(minOf(700L,maxOf(1L,deadline-android.os.SystemClock.elapsedRealtime())), TimeUnit.MILLISECONDS)) break
             }
         } finally {
             active.set(false)

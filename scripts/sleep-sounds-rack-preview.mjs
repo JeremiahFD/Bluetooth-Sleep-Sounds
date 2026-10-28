@@ -5,8 +5,9 @@ const frontend=fileURLToPath(new URL('../frontend/',import.meta.url));
 const server=await createServer({
  root:frontend,configFile:false,base:'/ui/',
  server:{host:'127.0.0.1',port:5173,strictPort:true,
-  proxy:{'/api':{target:'http://127.0.0.1:8093',changeOrigin:true},
-         '/install':{target:'http://127.0.0.1:8093',changeOrigin:true}}}
+  // Keep the browser's Host/Origin pair intact for backend CSRF validation.
+  proxy:{'/api':{target:'http://127.0.0.1:8093',changeOrigin:false},
+         '/install':{target:'http://127.0.0.1:8093',changeOrigin:false}}}
 });
 await server.listen();
 process.title='Sleep Sounds rack source preview';

@@ -43,3 +43,12 @@ Remove the large separate gray native toolbar. Put a compact selected-host name,
 7. Test public and household configurations against the same source and behavior. Public packages contain no household configuration. Include the separately prepared controller-assignment fix during the reviewed source reconciliation.
 
 No APK build, device installation or deployment is authorized merely by this planning document. Retain the existing release/versioning checklist for the later approved build.
+
+
+## Implementation checkpoint — 0.9.0-alpha.2
+
+Implemented: persistent per-installation default, identity-verified NSD discovery with deduplication, one 20-second connection budget, stale-attempt protection and a compact themed selector injected by the Android shell. Saved connections remain runtime-only; updates keep package/signing identity. Controller assignment fixes are included. Connection policy unit tests and Android compilation/lint pass; full phone/TV/network acceptance remains separate from source tests.
+
+System & diagnostics now separates Restart app, Reset settings, Factory reset app and Delete all audio. Destructive operations show the selected host, clear scope, an Are you sure warning and an exact typed confirmation. Settings reset preserves profile names/favorites/ratings and clears profile preferences. Factory reset keeps recordings, artwork, host identity and OS pairings; Android connection/default-host choices remain installation-local. Delete audio removes host recordings/artwork separately and has no Undo. None of these actions resets the operating system or changes radio configuration.
+
+Linux maintenance requires a systemd user service, systemd-run and explicit `SLEEP_SOUNDS_HOST_ACTIONS=true` in the host environment. Defaults remain disabled. The confirmed action schedules an independent user unit, stops the player before changing files, then starts it to reload clean state. Settings/factory changes retain a local recovery archive under maintenance-backups; deleting audio does not. Android restarts its playback engine and LAN server within its foreground service, avoiding background-service restart restrictions. No destructive acceptance test was run on real user data.

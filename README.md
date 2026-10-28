@@ -2,6 +2,8 @@
 
 **Turn a Raspberry Pi or spare Android device, including a Google TV box, into a dedicated sleep-sound host that sends audio to Bluetooth speakers. Control it from your phone, tablet or another computer.**
 
+Current alpha: **0.9.0-alpha.2 (Android build 13)**. Includes remembered default devices, improved connection recovery and confirmed host maintenance. [Setup and maintenance details](docs/HOST_CONNECTION_PLAN.md#implementation-checkpoint--090-alpha2).
+
 ## What it is mainly made for
 
 This project grew out of a bedroom setup: leave a small, inexpensive device near your speakers, load long rain, thunder or other sleep recordings, and let it play through the night. Use your phone to choose sounds, change volume, set a sleep timer or adjust supported effects.

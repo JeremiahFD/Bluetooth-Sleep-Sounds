@@ -6,8 +6,8 @@ android {
         applicationId = "local.sleepsounds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.9.0-alpha.1"
+        versionCode = 13
+        versionName = "0.9.0-alpha.2"
     }
     buildFeatures { buildConfig = true }
     compileOptions {
@@ -17,4 +17,4 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-dependencies { implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0") }
+dependencies { implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"); testImplementation("junit:junit:4.13.2") }

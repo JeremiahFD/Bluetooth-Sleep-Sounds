@@ -19,7 +19,11 @@ import java.io.ByteArrayInputStream
 /** Named host controller, with optional independent Android playback. */
 class MainActivity : Activity() {
     private lateinit var devicePicker: DevicePicker
-    private lateinit var deviceButton: Button
+    private lateinit var offlineTitle:TextView
+    private lateinit var progress:ProgressBar
+    private val connectionHandler=android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile private var connectionBudget:ConnectionBudget?=null
+
     private var clearHostHistory=false
     private lateinit var web: WebView
     private lateinit var swipe: SwipeRefreshLayout
@@ -27,7 +31,7 @@ class MainActivity : Activity() {
     private lateinit var errorMessage: TextView
     private var origin = ""
     private var mainFrameFailed = false
-    private var connectionGeneration = 0
+    @Volatile private var connectionGeneration = 0
     private var nativeSession = java.util.UUID.randomUUID().toString()
     private var profileConfirmed = false
     private var lastProfile: String? = null
@@ -36,7 +40,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        devicePicker=DevicePicker(this,getPreferences(MODE_PRIVATE),::switchDevice,::showServerEditor,{if(::deviceButton.isInitialized)deviceButton.text=devicePicker.name+" ▾"})
+        devicePicker=DevicePicker(this,getPreferences(MODE_PRIVATE),::switchDevice,::showServerEditor,{installHostSelector()})
         nativeSession=savedInstanceState?.getString("native_session") ?: nativeSession
         profileConfirmed=savedInstanceState?.getBoolean("profile_confirmed") ?: false
         val night = Color.rgb(9,21,36)
@@ -54,6 +58,9 @@ class MainActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     val uri = request.url
+                    if(request.isForMainFrame&&request.hasGesture()&&allowed(Uri.parse(view.url?:""))&&uri.toString()=="sleep-sounds://devices"){
+                        connectionGeneration++;connectionBudget=null;devicePicker.cancelScan();devicePicker.show();return true
+                    }
                     if (request.isForMainFrame && request.hasGesture() && allowed(Uri.parse(view.url ?: "")) &&
                         uri.toString()=="sleep-sounds://diagnostics") {
                         exportOrigin=origin
@@ -64,7 +71,7 @@ class MainActivity : Activity() {
                     }
                     if (request.isForMainFrame && request.hasGesture() && allowed(Uri.parse(view.url ?: "")) &&
                         uri.toString() in listOf("sleep-sounds://reconnect","sleep-sounds://connections")) {
-                        if(uri.host=="connections")showServerEditor() else connect(savedAddress())
+                        if(uri.host=="connections")devicePicker.settings() else connect(savedAddress())
                         return true
                     }
                     if (request.isForMainFrame && request.hasGesture() && allowed(Uri.parse(view.url ?: "")) &&
@@ -101,31 +108,34 @@ class MainActivity : Activity() {
                     return !allowed(uri)
                 }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                    if(allowed(request.url)&&request.url.path=="/ui/native-host.css")return WebResourceResponse("text/css","UTF-8",assets.open("native-host.css"))
                     if (allowed(request.url)) return null
                     return WebResourceResponse("text/plain","UTF-8",403,"Blocked",emptyMap(),ByteArrayInputStream(ByteArray(0)))
                 }
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
-                    mainFrameFailed = false
+                    if(currentPage(Uri.parse(url)))mainFrameFailed = false
                 }
                 override fun onPageFinished(view: WebView, url: String) {
                     swipe.isRefreshing = false
-                    if (!mainFrameFailed && allowed(Uri.parse(url))) {
+                    if (!mainFrameFailed && currentPage(Uri.parse(url))) {
+                        connectionBudget=null
                         offline.visibility = View.GONE
+                        installHostSelector()
                         if(clearHostHistory){web.clearHistory();clearHostHistory=false}
                     }
                 }
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                    if (request.isForMainFrame) {
+                    if (request.isForMainFrame && currentPage(request.url)) {
                         mainFrameFailed = true
                         swipe.isRefreshing = false
-                        showOffline("Couldn't reach the host page. Retry to check LAN and mesh.")
+                        retryPage("Could not load the host page.")
                     }
                 }
                 override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
-                    if (request.isForMainFrame && response.statusCode >= 400) {
+                    if (request.isForMainFrame && currentPage(request.url) && response.statusCode >= 400) {
                         mainFrameFailed = true
                         swipe.isRefreshing = false
-                        showOffline("The Pi returned an error (${response.statusCode}). Try again.")
+                        retryPage("Host page returned ${response.statusCode}.")
                     }
                 }
             }
@@ -167,7 +177,7 @@ class MainActivity : Activity() {
             setOnRefreshListener { connect(savedAddress()) }
         }
         swipe.addView(web, ViewGroup.LayoutParams(-1,-1))
-        root.addView(swipe,FrameLayout.LayoutParams(-1,-1).apply{topMargin=dp(48)})
+        root.addView(swipe,FrameLayout.LayoutParams(-1,-1))
         offline = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -175,13 +185,16 @@ class MainActivity : Activity() {
             setBackgroundColor(night)
             visibility = View.GONE
         }
-        offline.addView(TextView(this).apply {
+        offlineTitle=TextView(this).apply {
             text = "Cannot connect to Sleep Sounds"
             textSize = 21f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             setPadding(0,0,0,dp(12))
-        })
+        }
+        offline.addView(offlineTitle)
+        progress=ProgressBar(this).apply{isIndeterminate=true}
+        offline.addView(progress,LinearLayout.LayoutParams(dp(32),dp(32)).apply{gravity=Gravity.CENTER_HORIZONTAL;bottomMargin=dp(16)})
         errorMessage = TextView(this).apply {
             textSize = 14f
             gravity = Gravity.CENTER
@@ -197,12 +210,9 @@ class MainActivity : Activity() {
             text = "Change server address"
             setOnClickListener { showServerEditor() }
         }, LinearLayout.LayoutParams(-1,-2))
-        root.addView(offline,FrameLayout.LayoutParams(-1,-1).apply{topMargin=dp(48)})
-        val bar=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setBackgroundColor(night)}
-        deviceButton=Button(this).apply{text=devicePicker.name+" ▾";contentDescription="Select device";setOnClickListener{devicePicker.show()}}
-        bar.addView(deviceButton,LinearLayout.LayoutParams(0,-1,1f))
-        bar.addView(Button(this).apply{text="⚙";contentDescription="Device settings";setOnClickListener{devicePicker.settings()}},LinearLayout.LayoutParams(dp(56),-1))
-        root.addView(bar,FrameLayout.LayoutParams(-1,dp(48)))
+        offline.addView(Button(this).apply{text="Choose sleep device";setOnClickListener{connectionGeneration++;connectionBudget=null;devicePicker.cancelScan();devicePicker.show()}},LinearLayout.LayoutParams(-1,-2))
+        offline.addView(Button(this).apply{text="Connections & default device";setOnClickListener{devicePicker.settings()}},LinearLayout.LayoutParams(-1,-2))
+        root.addView(offline,FrameLayout.LayoutParams(-1,-1))
 
         // One inset owner: native root pads system bars and IME; WebView must not pad them again.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -216,31 +226,36 @@ class MainActivity : Activity() {
         } else root.fitsSystemWindows = true
         setContentView(root)
         root.requestApplyInsets()
-        if(savedInstanceState==null){showOffline("Checking available playback devices…");devicePicker.startup()}
+        if(savedInstanceState==null){
+            val budget=ConnectionBudget(android.os.SystemClock.elapsedRealtime());beginConnecting(budget,"Finding sleep devices…")
+            devicePicker.startup(budget,onSelectionRequired={connectionBudget=null;progress.visibility=View.GONE;offlineTitle.text="Choose a sleep device"}){key->selectDevice(key,budget)}
+        }
         else if(devicePicker.local())startLocalHost()else connect(savedAddress())
     }
 
-    private fun switchDevice(key:String){
-        rememberProfile {
+    private fun switchDevice(key:String)=selectDevice(key,ConnectionBudget(android.os.SystemClock.elapsedRealtime()))
+    private fun selectDevice(key:String,budget:ConnectionBudget){
+        devicePicker.cancelScan()
+        val selection=++connectionGeneration
+        rememberProfile selection@{
+            if(selection!=connectionGeneration)return@selection
             devicePicker.save();devicePicker.activate(key)
             lastProfile=getPreferences(MODE_PRIVATE).getString("last_profile",null);profileConfirmed=false;nativeSession=java.util.UUID.randomUUID().toString()
-            connectionGeneration++;origin="";web.stopLoading();web.loadData("<html></html>","text/html","UTF-8");clearHostHistory=true
-            deviceButton.text=devicePicker.name+" ▾"
-            if(devicePicker.local())startLocalHost()else connect(savedAddress())
+            origin="";web.stopLoading();clearHostHistory=true
+            if(devicePicker.local())startLocalHost(budget)else connect(savedAddress(),budget)
         }
     }
-    private fun startLocalHost(){
+    private fun startLocalHost(budget:ConnectionBudget=ConnectionBudget(android.os.SystemClock.elapsedRealtime())){
         val prefs=getSharedPreferences("android_host",MODE_PRIVATE)
         if(!prefs.contains("host_name"))prefs.edit().putString("host_name",devicePicker.name).apply()
-        try{startForegroundService(Intent(this,AndroidHostService::class.java))}catch(_:Exception){showOffline("Open this app to start the local playback host.");return}
-        showOffline("Starting local Android playback host…")
-        val deadline=android.os.SystemClock.elapsedRealtime()+10000
-        val handler=android.os.Handler(android.os.Looper.getMainLooper())
-        handler.post(object:Runnable{override fun run(){
-            if(isFinishing||isDestroyed||!devicePicker.local())return
-            if(AndroidHostService.running){getPreferences(MODE_PRIVATE).edit().putString("server","http://127.0.0.1:8080").putString("lan_secondary","").apply();connect("http://127.0.0.1:8080")}
-            else if(android.os.SystemClock.elapsedRealtime()<deadline)handler.postDelayed(this,250)
-            else showOffline("Local host did not start. Check this device's diagnostics.")
+        try{startForegroundService(Intent(this,AndroidHostService::class.java))}catch(_:Exception){showOffline("Open this app to start its local playback host.");return}
+        beginConnecting(budget,"Starting local playback host…")
+        val generation=connectionGeneration
+        connectionHandler.post(object:Runnable{override fun run(){
+            if(isFinishing||isDestroyed||generation!=connectionGeneration||!devicePicker.local())return
+            if(AndroidHostService.running){getPreferences(MODE_PRIVATE).edit().putString("server","http://127.0.0.1:8080").putString("lan_secondary","").apply();connect("http://127.0.0.1:8080",budget)}
+            else if(!budget.expired(android.os.SystemClock.elapsedRealtime()))connectionHandler.postDelayed(this,200)
+            else showOffline("Local host did not start within 20 seconds.")
         }})
     }
     private fun dp(n: Int) = (n * resources.displayMetrics.density + 0.5f).toInt()
@@ -252,7 +267,28 @@ class MainActivity : Activity() {
     private fun savedLanFallback(primary:String=savedAddress()):String =
         getPreferences(MODE_PRIVATE).getString("lan_secondary", "").orEmpty()
     private fun allowed(uri: Uri) = (uri.scheme == "http" || uri.scheme == "https") && "${uri.scheme}://${uri.encodedAuthority}" == origin
-    private fun showOffline(message: String) { errorMessage.text = message; offline.visibility = View.VISIBLE }
+    private fun currentPage(uri:Uri)=allowed(uri)&&
+        (uri.getQueryParameter("native_attempt")?.let{it==connectionGeneration.toString()}!=false)&&
+        (connectionBudget?.expired(android.os.SystemClock.elapsedRealtime())!=true)
+    private fun showOffline(message:String){mainFrameFailed=true;connectionBudget=null;offlineTitle.text="Cannot connect to Sleep Sounds";progress.visibility=View.GONE;errorMessage.text=message;offline.visibility=View.VISIBLE;swipe.isRefreshing=false}
+    private fun beginConnecting(budget:ConnectionBudget,message:String){
+        connectionBudget=budget;offlineTitle.text="Connecting to "+devicePicker.name;errorMessage.text=message;progress.visibility=View.VISIBLE;offline.visibility=View.VISIBLE
+        val generation=connectionGeneration
+        connectionHandler.postDelayed({if(generation==connectionGeneration&&connectionBudget===budget){devicePicker.cancelScan();web.stopLoading();showOffline("No connection after 20 seconds. Retry or choose another sleep device.")}},maxOf(1,budget.remaining(android.os.SystemClock.elapsedRealtime())))
+    }
+    private fun retryPage(reason:String){
+        val budget=connectionBudget
+        if(budget!=null&&!budget.expired(android.os.SystemClock.elapsedRealtime())){
+            val generation=connectionGeneration
+            errorMessage.text="Still connecting…"
+            connectionHandler.postDelayed({if(generation==connectionGeneration&&connectionBudget===budget)connect(savedAddress(),budget)},400)
+        }else showOffline(reason+" Retry or choose another sleep device.")
+    }
+    private fun installHostSelector(){
+        if(!::web.isInitialized||!allowed(Uri.parse(web.url?:"")))return
+        val js="window.__sleepHostLabel="+org.json.JSONObject.quote(devicePicker.name)+";"+assets.open("native-host.js").bufferedReader().use{it.readText()}
+        web.evaluateJavascript(js,null)
+    }
 
     private fun normalizeAddress(raw:String, mesh:Boolean=false):String? {
         val text=raw.trim();val explicitScheme=text.contains("://")
@@ -271,8 +307,10 @@ class MainActivity : Activity() {
         return "${uri.scheme}://$host"+(if(port==-1)"" else ":$port")
     }
     private fun rememberProfile(done:()->Unit) {
+        val sourceOrigin=origin;val sourceKey=devicePicker.key;val sourceSession=nativeSession
         if(::web.isInitialized && allowed(Uri.parse(web.url ?: ""))) {
             web.evaluateJavascript("JSON.stringify({profile:localStorage.getItem('sleep-profile-id'),confirmed:sessionStorage.getItem('sleep-profile-confirmed')})") { encoded ->
+                if(origin!=sourceOrigin||devicePicker.key!=sourceKey||nativeSession!=sourceSession)return@evaluateJavascript
                 try { val data=org.json.JSONObject(org.json.JSONArray("[$encoded]").optString(0));val value=data.optString("profile")
                     profileConfirmed=data.optString("confirmed")==nativeSession
                     if(value=="none" || value.matches(Regex("[a-f0-9]{16}"))) {
@@ -283,59 +321,39 @@ class MainActivity : Activity() {
             }
         } else done()
     }
-    private fun connect(raw: String) {
-        val primary=normalizeAddress(raw) ?: return showOffline("Enter a private LAN address or .local hostname, with optional port.")
-        val alternateLan=savedLanFallback(primary)
-        val meshAddress=getPreferences(MODE_PRIVATE).getString("mesh","").orEmpty()
-        val lanCandidates=listOf(primary,alternateLan).filter { it.isNotBlank() }.distinct()
+    private fun connect(raw:String,budget:ConnectionBudget=ConnectionBudget(android.os.SystemClock.elapsedRealtime())){
+        val primary=normalizeAddress(raw)
+        val expected=getPreferences(MODE_PRIVATE).getString("host_id",null)
+        if(primary==null&&expected==null){showOffline("Choose a sleep device or enter its LAN address in Connections.");return}
+        val lan=listOfNotNull(primary,normalizeAddress(savedLanFallback())).distinct()
+        val mesh=HostProbe.normalize(getPreferences(MODE_PRIVATE).getString("mesh","").orEmpty())
         val generation=++connectionGeneration
+        beginConnecting(budget,"Checking LAN, then configured mesh…")
         rememberProfile {
-            showOffline("Checking LAN connection…")
-            val expected=getPreferences(MODE_PRIVATE).getString("host_id",null)
             Thread({
-                var chosen:String?=null;var discovered:String?=null;var legacy=false
-                val endpoints=sequence {
-                    yieldAll(lanCandidates)
-                    if(expected!=null && getPreferences(MODE_PRIVATE).getBoolean("discovery",false)) {
-                        val nearby=try { HostDiscovery(this@MainActivity).find().map { it.address }.filter { normalizeAddress(it)!=null } } catch(_:Exception) { emptyList() }
-                        yieldAll(nearby)
+                var found:HostProbe.Result?=null;var searched=false
+                while(!budget.expired(android.os.SystemClock.elapsedRealtime())&&generation==connectionGeneration&&connectionBudget===budget){
+                    for(address in lan){if(generation!=connectionGeneration)break;found=HostProbe.read(address,budget,expected);if(found!=null)break}
+                    if(found==null&&mesh!=null)found=HostProbe.read(mesh,budget,expected)
+                    if(found==null&&expected!=null&&!searched&&getPreferences(MODE_PRIVATE).getBoolean("discovery",true)){
+                        searched=true
+                        val nearby=try{HostDiscovery(this).find(minOf(budget.deadline,android.os.SystemClock.elapsedRealtime()+4500))}catch(_:Exception){emptyList()}
+                        for(row in nearby){val address=HostProbe.normalize(row.address)?:continue;found=HostProbe.read(address,budget,expected);if(found!=null)break}
                     }
-                    if(meshAddress.isNotBlank())yield(meshAddress)
-                }
-                for(endpoint in endpoints.distinct()) {
-                    if(generation!=connectionGeneration)break
-                    try {
-                        val c=java.net.URL("$endpoint/api/identity").openConnection() as java.net.HttpURLConnection
-                        c.connectTimeout=4500;c.readTimeout=4500;c.instanceFollowRedirects=false
-                        try {
-                            if(c.responseCode==404 && endpoint in lanCandidates && expected==null) { chosen=endpoint;legacy=true;break }
-                            require(c.responseCode==200)
-                            val rawIdentity=c.inputStream.use { input -> val out=java.io.ByteArrayOutputStream();val buf=ByteArray(512)
-                                while(out.size()<=4096){val n=input.read(buf);if(n<0)break;out.write(buf,0,n)};out.toByteArray() }
-                            require(rawIdentity.size<=4096)
-                            val identity=org.json.JSONObject(String(rawIdentity,Charsets.UTF_8));val id=identity.optString("host_id")
-                            require(identity.optString("service")=="sleep-sounds" && id.matches(Regex("[a-f0-9]{32}")))
-                            // Identity prevents accidental cross-host fallback; HTTP is still trusted-network transport.
-                            require((expected!=null && id==expected) || (expected==null && endpoint in lanCandidates))
-                            chosen=endpoint;discovered=id;break
-                        } finally { c.disconnect() }
-                    } catch(_:Exception){}
+                    if(found!=null)break
+                    if(!budget.expired(android.os.SystemClock.elapsedRealtime()))Thread.sleep(minOf(400L,budget.remaining(android.os.SystemClock.elapsedRealtime())))
                 }
                 runOnUiThread {
-                    if(generation!=connectionGeneration || isFinishing)return@runOnUiThread
-                    val target=chosen
-                    if(target==null) { swipe.isRefreshing=false;showOffline("Cannot reach the verified host by LAN or mesh. Check power, Wi-Fi and Tailscale. A new host must first be reached through LAN.") }
-                    else {
-                        chooser?.onReceiveValue(null);chooser=null;origin=target
-                        getPreferences(MODE_PRIVATE).edit().putString("server",primary).apply()
-                        if(discovered!=null)getPreferences(MODE_PRIVATE).edit().putString("host_id",discovered).apply()
-                        devicePicker.save()
-                        mainFrameFailed=false;offline.visibility=View.GONE
-                        val profile=lastProfile ?: getPreferences(MODE_PRIVATE).getString("last_profile",null)
-                        val query=if(profile!=null && (profile=="none" || profile.matches(Regex("[a-f0-9]{16}")))) "?native_profile=$profile&native_session=$nativeSession"+(if(profileConfirmed)"&native_confirmed=1" else "") else "?native_session=$nativeSession"
-                        web.loadUrl("$origin/ui/$query")
-                        if(legacy && meshAddress.isNotEmpty())Toast.makeText(this,"Update the host app before mesh identity checks can be used.",Toast.LENGTH_LONG).show()
-                    }
+                    if(generation!=connectionGeneration||connectionBudget!==budget||isFinishing||isDestroyed)return@runOnUiThread
+                    val result=found
+                    if(result==null){showOffline("No connection after 20 seconds. Your selected host was kept; retry or choose another device.");return@runOnUiThread}
+                    chooser?.onReceiveValue(null);chooser=null;origin=result.address
+                    getPreferences(MODE_PRIVATE).edit().putString("host_id",result.identity).apply()
+                    devicePicker.store.get(devicePicker.key)?.let{it.identity=result.identity;if(!devicePicker.local()&&it.lan!=result.address){it.alternate=it.lan;it.lan=result.address};devicePicker.store.update(it)}
+                    mainFrameFailed=false
+                    val profile=lastProfile?:getPreferences(MODE_PRIVATE).getString("last_profile",null)
+                    val query=if(profile!=null&&(profile=="none"||profile.matches(Regex("[a-f0-9]{16}"))))"?native_profile=$profile&native_session=$nativeSession"+(if(profileConfirmed)"&native_confirmed=1"else "")else "?native_session=$nativeSession"
+                    web.loadUrl("$origin/ui/$query&native_attempt=$generation")
                 }
             },"SleepSounds-host-connect").start()
         }
@@ -444,9 +462,10 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        connectionGeneration++
+        connectionGeneration++;connectionBudget=null;devicePicker.cancelScan();connectionHandler.removeCallbacksAndMessages(null)
         chooser?.onReceiveValue(null)
         web.destroy()
         super.onDestroy()
     }
+
 }

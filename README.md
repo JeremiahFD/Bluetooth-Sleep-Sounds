@@ -16,6 +16,18 @@ A major planned feature is **sending sleep sounds from one host to several Bluet
 
 **Multiple-Bluetooth-speaker output is a roadmap goal, not a finished feature in this alpha.** Android currently follows one system-selected output. Linux has an experimental wired-plus-Bluetooth combination. Reliable multi-speaker playback, synchronization and device limits still need development and hardware testing. Suggestions and compatible-device reports are welcome.
 
+### Existing Linux multi-output helper: available for customization
+
+**Experimental multi-output support is already included in the Linux source and release package.** The [combined-output helper](scripts/sleep-sounds-combined-output.py) currently combines a configured wired output and a Bluetooth output. Its [systemd service template](deploy/sleep-sounds-combined-output.service) and [configuration instructions](docs/PORTABILITY.md#experimental-wired--bluetooth-output) are included too.
+
+Once configured and running, its combined virtual output can be selected in the existing output dropdown. **What is missing is a general UI to choose member devices, add outputs and create/save speaker groups.** There is basic selection of the existing virtual output, not a finished multi-device setup wizard.
+
+You can use your own AI coding tool to add a multi-output option to the [Outputs/Devices interface](frontend/src/DevicePages.jsx), using this helper as the starting point. For example:
+
+> Inspect the Linux combined-output helper, audio_output.py, speaker_sync.py and the Outputs/Devices interface. Add a multi-output option that lets me choose available outputs and save a group. Reuse the existing virtual-output approach, preserve single-output playback, and test pause/resume, output switching, one speaker disconnecting and long-run clock drift. Keep unsupported Android features clearly marked. Do not embed my device addresses or recordings in the source.
+
+Adding that UI and extending the helper are personal customizations permitted by the license. Arbitrary numbers of outputs, multiple Bluetooth speakers and Android multi-output routing require further implementation and hardware testing; AI-generated changes still need review. Please share suggestions or report how your hardware behaves.
+
 **Early alpha — promising reliability update:** after the recent audio-stream lifecycle fix, one Raspberry Pi setup completed a full night with **zero reported stutters**, with playback still reported clear afterward. This build may have resolved the issue on that setup; earlier stutters may be device/configuration-specific. This is a user listening report, not proof of a universal fix. Test your own hardware. No recordings are included.
 
 [Download the Android APK](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/releases) · [Report a bug or suggest an idea](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/issues) · [Roadmap](#roadmap) · [License](LICENSE)

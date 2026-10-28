@@ -17,6 +17,8 @@ The installer creates a private user environment file and a systemd user service
 
 ## Experimental wired + Bluetooth output
 
+The helper and service template are included in both the repository and Linux release archive. Its virtual combined output can appear in the existing output selector once running. A general UI for choosing group members, adding outputs and saving groups is not implemented; you can use an AI coding tool to build it from these components (see the README customization example).
+
 The optional helper is not installed/enabled by the basic installer. First find your own exact output names through the app/`wpctl status`/`pw-dump`. Configure the same environment for the app and helper:
 
 - `SLEEP_SOUNDS_COMBINED_WIRED=pipewire/<your-wired-sink-name>`

@@ -125,6 +125,7 @@ These are possibilities, not delivery promises. **Suggestions and bug reports ar
 
 ### Next / reliability first
 
+- [Unified host connection plan](docs/HOST_CONNECTION_PLAN.md): phone-local default device, universal verified host list, a themed compact selector and a single20-second Connecting window before failure. Same application code for public/household configurations; planned, not yet implemented.
 - Long-duration stutter regression tests and reproducible recordings after the actual output path.
 - Stronger host discovery, identity handling, reconnect UX and clearer update/download flows.
 - Saved output profiles, add/remove speakers and surviving-output behavior when one disconnects.

@@ -4,7 +4,7 @@ A local-first sleep-audio player with an Android app and a self-hosted Linux bac
 
 **Early alpha:** intermittent audio stutters and output dropouts are still under investigation. Start with one output and test your setup before relying on it overnight. No recordings are included.
 
-[Download the Android APK](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/releases/latest) · [Report a bug or suggest an idea](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/issues) · [Roadmap](#roadmap) · [License](LICENSE)
+[Download the Android APK](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/releases) · [Report a bug or suggest an idea](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/issues) · [Roadmap](#roadmap) · [License](LICENSE)
 
 ## Screenshots
 
@@ -42,7 +42,7 @@ The APK targets **Android 8.0 / API 26 or newer**. It is a universal Java/Kotlin
 
 ## Android quick start
 
-1. Download the APK and SHA256SUMS from [Releases](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/releases/latest). This initial alpha is a debug-signed development build; preserve signing continuity for future in-place updates.
+1. Download the APK and SHA256SUMS from [Releases](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/releases). This initial alpha is a debug-signed development build; preserve signing continuity for future in-place updates.
 2. Install the APK. Android may ask you to allow installation from your browser or file manager.
 3. Choose a role. For a local player, open **Device settings**, enable the local playback host, and choose **This device**. TV installations default to a local host; phones default to remote control.
 4. For a remote, enter your own Linux/Android host address in connection settings, or use **Find nearby hosts**. No household addresses or recordings are embedded in this public build.

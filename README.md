@@ -30,7 +30,7 @@ You can use your own AI coding tool to add a multi-output option to the [Outputs
 
 Adding that UI and extending the helper are personal customizations permitted by the license. Arbitrary numbers of outputs, multiple Bluetooth speakers and Android multi-output routing require further implementation and hardware testing; AI-generated changes still need review. Please share suggestions or report how your hardware behaves.
 
-**Early alpha — promising reliability update:** after the recent audio-stream lifecycle fix, one Raspberry Pi setup completed a full night with **zero reported stutters**, with playback still reported clear afterward. This build may have resolved the issue on that setup; earlier stutters may be device/configuration-specific. This is a user listening report, not proof of a universal fix. Test your own hardware. No recordings are included.
+**Early alpha — dual-output stuttering remains unresolved:** one Raspberry Pi setup initially completed a clean night after the stream-lifecycle fix, but the owner subsequently reported stuttering on the wired branch during extended wired + Bluetooth playback. The improvement was not a confirmed fix. Short tests and one clean night do not establish overnight reliability. No recordings are included.
 
 [Download the Android APK](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/releases) · [Report a bug or suggest an idea](https://github.com/JeremiahFD/Bluetooth-Sleep-Sounds/issues) · [Roadmap](#roadmap) · [License](LICENSE)
 
@@ -105,7 +105,7 @@ Replace the placeholder with your host's address. Open `http://<your-host-addres
 
 ## Known issues and stutters
 
-**October 28, 2026 follow-up:** the owner reports a completely stutter-free night on the Raspberry Pi and continued clean playback. The recent combined-output helper changes remove unused speaker branches and recreate them when needed. Those changes are a plausible explanation for the improvement, but the exact cause has not been isolated. **The current build appears to have possibly resolved this setup’s stutters.** Earlier problems could depend on the particular device, radios, outputs or configuration. The speaker/output combination for this overnight report was not specified, and this is not an Android overnight result or an instrumented end-to-end recording. More reports and longer tests are welcome.
+**October 28, 2026 recurrence:** after an initially stutter-free night, the owner reported wired-output stuttering during extended Raspberry Pi dual-output playback. Retained logs show increasing audio-graph errors on the previously identified wired branch before switching to Bluetooth-only playback. The tested lifecycle helper remained installed; the later APK/download-page update did not deploy a new Pi audio backend. **Treat the long-duration dual-output bug as open.** The logs narrow the investigation but do not establish the exact cause or measure every audible gap. This report is about the Pi, not an Android overnight failure.
 
 - Intermittent short stutters, repeating fragments, pops and Bluetooth dropouts have occurred. Some failures appeared only after hours of dual-output playback. A clean short test does not establish overnight reliability.
 - Source-file defects/loop boundaries, decoder buffering, the audio graph, independent output clocks, Bluetooth links, Wi-Fi coexistence, USB resets and power stability can produce similar symptoms. There is no single proven root cause for every reported interruption.

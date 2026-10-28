@@ -1,5 +1,10 @@
 # Changelog
 
+## Reliability recurrence — 2026-10-28
+
+The owner subsequently reports stuttering on the wired branch of extended Pi wired + Bluetooth playback. This supersedes the earlier tentative resolution wording below. The lifecycle helper was still installed and the latest APK release did not replace Pi audio code. Root cause remains under investigation. Documentation only; release binaries and checksums unchanged.
+
+
 ## 0.9.0-alpha.2 — Host connections and maintenance
 
 - Remember a preferred playback host per installation; never silently substitute another host.

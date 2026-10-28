@@ -1,0 +1,10 @@
+import {CloudstormButton} from './CloudstormButton.jsx';
+import React,{useState} from 'react';
+import {Toggle} from './ui.jsx';
+export const NOISE_COLORS=['white','pink','brown','blue','violet','velvet'];
+export default function NoiseLayers({draft,change,disabled,supported}){
+ const [open,setOpen]=useState(false);
+ return <section className="rack-card studio-glass"><header className="rack-card-heading"><div className="rack-card-name"><h2>Background noise</h2><small>Two independent layers mixed under your recording</small></div><CloudstormButton aria-expanded={open} onClick={()=>setOpen(!open)}>{open?'Close':'Edit +'}</CloudstormButton></header>
+ {open&&<div className="rack-card-content"><p>Starts, pauses and stops with the track. Added after the manual rack, with a final sample-peak limiter. Start quietly; this adds masking sound, not noise cancellation.</p>{[1,2].map(i=><fieldset key={i} disabled={disabled||!supported} className="noise-layer"><legend>Noise layer {i}</legend><Toggle label={'Enable noise layer '+i} checked={!!draft['noise'+i+'_enabled']} onChange={v=>change({['noise'+i+'_enabled']:v})}/><label>Color <select value={draft['noise'+i+'_color']||'pink'} onChange={e=>change({['noise'+i+'_color']:e.target.value})}>{NOISE_COLORS.map(c=><option key={c} value={c}>{c[0].toUpperCase()+c.slice(1)}</option>)}</select></label><label>Level <input aria-label={'Noise layer '+i+' level'} type="range" min="-60" max="-12" step="1" value={draft['noise'+i+'_db']??-36} onChange={e=>change({['noise'+i+'_db']:Number(e.target.value)})}/><output>{draft['noise'+i+'_db']??-36} dB</output></label><button type="button" onClick={()=>change({['noise'+i+'_enabled']:false,['noise'+i+'_color']:i===1?'pink':'brown',['noise'+i+'_db']:-36})}>Reset layer</button></fieldset>)}<p className="helper">White is broad, pink is gentler in the highs, brown is deeper. Blue and violet emphasize higher frequencies; velvet uses sparse pulses. These are generated noise colors, not claims about the room or sleep outcomes.</p></div>}
+ </section>;
+}

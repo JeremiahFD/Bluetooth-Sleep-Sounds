@@ -1,0 +1,21 @@
+[Unit]
+Description=Sleep Sounds low-overhead read-only health recorder
+After=sleep-sounds.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -u %h/.local/share/sleep-sounds/diagnostics/sleep-sounds-health.py
+Restart=on-failure
+RestartSec=30
+Nice=15
+IOSchedulingClass=idle
+UMask=0077
+NoNewPrivileges=yes
+MemoryMax=48M
+CPUQuota=5%
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sleep-sounds-health
+
+[Install]
+WantedBy=default.target

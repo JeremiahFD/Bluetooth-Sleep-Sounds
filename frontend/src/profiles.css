@@ -1,0 +1,20 @@
+.profile-trigger{display:inline-flex;align-items:center;gap:7px;max-width:180px;border:1px solid var(--border,#ffffff30);border-radius:999px;padding:7px 10px;background:#ffffff14;color:inherit;cursor:pointer}
+.profile-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profiles-dialog .profile-toggle{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:12px 0 18px}
+.profiles-dialog .profile-toggle small{display:block;opacity:.72;margin-top:4px}
+.profile-list{display:grid;gap:6px;max-height:40vh;overflow:auto}
+.profile-row{display:flex;align-items:center;gap:4px;border:1px solid #ffffff1f;border-radius:14px;min-height:52px}
+.profile-row.selected{border-color:#aebdff8c;background:#aebdff18}
+.profile-row.profile-disabled{opacity:.4}
+.profile-choice{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-align:left;padding:8px 10px;background:transparent;border:0;color:inherit;cursor:pointer}
+.profile-choice>span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.profile-avatar{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:50%;background:#ffffff27}
+.profile-actions{display:flex;align-items:center;padding-right:5px}
+.profile-actions .icon-btn:last-child{color:#fa8f93}
+.profile-add{margin-top:16px}
+.profile-add form,.profile-edit-form{display:flex;align-items:center;gap:6px;width:100%;padding:5px}
+.profile-add input,.profile-edit-form input{min-width:0;flex:1}
+.profile-add-button{width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+.profile-delete-confirm{margin-top:14px;padding:12px;border:1px solid #fa8f9380;border-radius:14px;background:#a52c3230}
+.profile-delete-confirm p{margin:0 0 10px}
+.profile-delete-confirm .danger{background:#bd4249;color:white}

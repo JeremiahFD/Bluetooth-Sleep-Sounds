@@ -1,0 +1,22 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <application android:label="Sleep Sounds" android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.Material.NoActionBar"
+        android:banner="@drawable/tv_banner" android:allowBackup="false" android:usesCleartextTraffic="true" android:supportsRtl="true">
+        <service android:name=".AndroidHostService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+        <activity android:name=".UpdateInstallerActivity" android:exported="false" android:launchMode="singleTop" android:configChanges="orientation|screenSize" />
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

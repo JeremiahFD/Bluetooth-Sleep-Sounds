@@ -1,0 +1,20 @@
+[Unit]
+Description=Sleep Sounds phone controller and audio player
+After=pipewire.service wireplumber.service
+Wants=pipewire.service wireplumber.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/sleep-sounds/app
+ExecStart=/usr/bin/python3 -u %h/.local/share/sleep-sounds/app/server.py
+Environment=SLEEP_SOUNDS_BIND=0.0.0.0
+EnvironmentFile=%h/.config/sleep-sounds/environment
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=10
+UMask=0077
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

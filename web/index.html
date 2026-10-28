@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111b22">
+  <title>Sleep Sounds</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header><img src="/icon.svg" alt="" width="40" height="40"><div><h1>Sleep Sounds</h1><p>Your quiet corner.</p></div><span id="connection" class="badge">Connecting</span></header>
+  <p id="error" role="alert" hidden></p>
+  <p id="power" class="notice" hidden>Pi power is low. Playback may stutter.</p>
+  <section class="now" aria-labelledby="now-title">
+    <p class="eyebrow" id="playback-state">READY WHEN YOU ARE</p>
+    <h2 id="now-title">Make room for rest.</h2>
+    <p id="now-detail">Upload a rain or storm recording to get started.</p>
+    <progress id="progress" value="0" max="1" aria-label="Track progress"></progress>
+    <div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div>
+    <div class="transport"><button id="play" class="primary" disabled>Play</button><button id="stop" disabled>Stop</button><label class="switch"><input id="loop" type="checkbox" checked> Loop track</label></div>
+    <div class="volume"><label for="volume">Volume</label><input type="range" id="volume" min="0" max="100" value="35"><output id="volume-value" for="volume">35%</output></div>
+  </section>
+  <div class="columns">
+    <section aria-labelledby="library-title">
+      <div class="section-head"><h2 id="library-title">Your sounds <span id="track-count" class="count">0</span></h2><label class="upload-button" for="upload">+ Add tracks</label><input id="upload" class="visually-hidden" type="file" accept=".mp3,.wav,.flac,.ogg,.opus,.m4a,.aac" multiple></div>
+      <p class="hint">Stored on the Pi. Ready whenever you need them.</p>
+      <p id="upload-status" role="status"></p>
+      <ul id="tracks" class="tracks"><li class="empty">No sounds yet. Add your first recording above.</li></ul>
+    </section>
+    <div>
+      <section aria-labelledby="timer-title">
+        <div class="section-head"><h2 id="timer-title">Sleep timer</h2><span id="timer-state" class="badge">Off</span></div>
+        <p class="hint">Stops the sound, even with your phone locked.</p>
+        <div class="presets"><button data-minutes="30">30 min</button><button data-minutes="60">1 hour</button><button data-minutes="90">90 min</button></div>
+        <form id="timer-form"><label class="visually-hidden" for="minutes">Timer in minutes</label><input id="minutes" type="number" min="1" max="1440" placeholder="Minutes" required><button type="submit">Set timer</button><button id="cancel-timer" type="button" hidden>Cancel</button></form>
+      </section>
+      <section aria-labelledby="bluetooth-title">
+        <div class="section-head"><h2 id="bluetooth-title">Bluetooth</h2><button id="scan">Find speaker</button></div>
+        <p id="bluetooth-status" class="hint" role="status">Put your speaker in pairing mode, then search.</p>
+        <ul id="devices" class="devices"></ul>
+        <label class="output-label" for="output">Audio output</label><select id="output"><option value="auto">System default</option></select>
+        <p class="hint small">Check the output and start at a low volume.</p>
+      </section>
+    </div>
+  </div>
+  <footer>Playback stays on the Pi. You can put your phone away.<br><span>Controls are available to devices on your home network.</span></footer>
+</main>
+</body>
+</html>

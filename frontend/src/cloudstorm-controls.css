@@ -1,0 +1,25 @@
+/* v1 generated asset experiment. Raster decoration; HTML/SVG remain the controls. */
+.cloudstorm-button{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:96px;padding:9px 20px;border:0;border-radius:14px;background-color:transparent;background-image:url('/ui/cloudstorm/controls-v1/secondary.png');background-repeat:no-repeat;background-position:center;background-size:104% 180%;color:#f1f5ff;font:inherit;font-size:.85rem;font-weight:600;text-shadow:0 1px 3px #000;cursor:pointer;transition:filter .14s ease,transform .1s ease}
+.cloudstorm-button>span{display:inline-flex;align-items:center;justify-content:center;gap:8px;position:relative;pointer-events:none}
+.cloudstorm-button--primary{background-image:url('/ui/cloudstorm/controls-v1/primary.png');background-size:108% 177%;min-width:180px}
+.cloudstorm-button--icon{background-image:url('/ui/cloudstorm/controls-v1/icon.png');background-size:116% 122%;min-width:44px;width:44px;padding:0;border-radius:12px}
+.cloudstorm-button:hover:not(:disabled){filter:brightness(1.18)}
+.cloudstorm-button:active:not(:disabled){transform:translateY(1px);filter:brightness(.9)}
+.cloudstorm-button:focus-visible{outline:3px solid #d5cdff;outline-offset:3px}
+.cloudstorm-button:disabled{filter:grayscale(.8);opacity:.4;cursor:not-allowed}
+.cloudstorm-button[aria-pressed=true]{filter:brightness(1.2)}
+.audio-studio .rack-card-heading>.cloudstorm-button,.audio-studio .rack-toolbar>.cloudstorm-button,.audio-studio .rack-order-actions>.cloudstorm-button{border:0;background-color:transparent;color:#f1f5ff;min-height:44px}
+.audio-studio .rack-card-heading>.cloudstorm-button--icon,.audio-studio .rack-order-actions>.cloudstorm-button--icon{min-width:44px;padding:0}
+.audio-studio .studio-apply-bar>.cloudstorm-button{margin-left:auto}
+.cloudstorm-gallery{max-width:960px;margin:auto;padding:40px 24px;min-height:100dvh}.cloudstorm-gallery h1{margin-top:28px}.cloudstorm-gallery p{line-height:1.6;color:var(--muted)}.cloudstorm-gallery section{padding:24px;margin:24px 0;border:1px solid var(--line);border-radius:20px}.cloudstorm-gallery-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:20px}
+@media(prefers-reduced-motion:reduce){.cloudstorm-button{transition:none}.cloudstorm-button:active:not(:disabled){transform:none}}
+
+.cloud-arrow-up{transform:rotate(-90deg);display:inline-flex}.cloud-arrow-down{transform:rotate(90deg);display:inline-flex}
+/* The artwork skin owns backgrounds even inside legacy studio button selectors. */
+.cloudstorm-button{--cloudstorm-surface:url('/ui/cloudstorm/controls-v1/secondary.png');--cloudstorm-fit:104% 180%}
+.cloudstorm-button--primary{--cloudstorm-surface:url('/ui/cloudstorm/controls-v1/primary.png');--cloudstorm-fit:108% 177%}
+.cloudstorm-button--icon{--cloudstorm-surface:url('/ui/cloudstorm/controls-v1/icon.png');--cloudstorm-fit:116% 122%}
+.audio-studio .rack-card-heading button.cloudstorm-button.cloudstorm-button,.audio-studio .rack-order-actions button.cloudstorm-button.cloudstorm-button,.audio-studio .rack-toolbar button.cloudstorm-button.cloudstorm-button,.audio-studio .studio-apply-bar button.cloudstorm-button.cloudstorm-button{background:transparent var(--cloudstorm-surface) center/var(--cloudstorm-fit) no-repeat;border:0;color:#f1f5ff;border-radius:12px}
+
+/* Other app themes retain neutral controls while this Cloudstorm experiment is reviewed. */
+.app:not(.theme-cloudstorm) .cloudstorm-button,.app:not(.theme-cloudstorm) .audio-studio button.cloudstorm-button.cloudstorm-button{--cloudstorm-surface:none;background:var(--soft) none;border:1px solid var(--line);color:var(--text)}

@@ -1,0 +1,18 @@
+[Unit]
+Description=Sleep Sounds optional Wired and Bluetooth combined output
+After=pipewire.service wireplumber.service
+BindsTo=pipewire.service
+PartOf=pipewire.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -u %h/.local/share/sleep-sounds/diagnostics/sleep-sounds-combined-output.py
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=12
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=pipewire.service

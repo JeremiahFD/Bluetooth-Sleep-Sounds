@@ -1,5 +1,9 @@
 # Changelog
 
+## Experimental combiner follow-up — 2026-10-29
+
+Owner listening is encouraging with an isolated PipeWire 1.6.9 combine-stream client against the existing 1.4.2 system daemon. Signal obstruction reproduces some Bluetooth stutters; earlier wired failures remain unexplained. One possible temporary dropout recovered without intervention, and one wired-sink graph error was observed later. Long-duration reliability remains open. This is a documentation update: the trial libraries, personal output configuration and engine selection are not bundled; APK/Linux release binaries and checksums are unchanged.
+
 ## Reliability recurrence — 2026-10-28
 
 The owner subsequently reports stuttering on the wired branch of extended Pi wired + Bluetooth playback. This supersedes the earlier tentative resolution wording below. The lifecycle helper was still installed and the latest APK release did not replace Pi audio code. Root cause remains under investigation. Documentation only; release binaries and checksums unchanged.

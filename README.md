@@ -105,6 +105,10 @@ Replace the placeholder with your host's address. Open `http://<your-host-addres
 
 ## Known issues and stutters
 
+**October 29, 2026 trial update:** an isolated PipeWire 1.6.9 combine-stream client is being compared with the installed 1.4.2 audio system on one Raspberry Pi. Only the combiner client and its supporting libraries changed; the system daemon, app effects and audio files stayed unchanged. The owner reports no ongoing listening issues so far except Bluetooth stutters reproducible when a person blocks the signal path. This suggests placement contributes to some Bluetooth interruptions; it does not explain or resolve the earlier wired-output failures. One possible temporary loss of sound was reported and sound returned without intervention; its cause is unconfirmed. Early telemetry was encouraging, but a later check recorded one wired-sink graph error. These observations are not a completed overnight regression test or a proven fix.
+
+The 1.6.9 trial is temporary and **not bundled in the current release**. No automatic PipeWire upgrade or engine selector is included. Personal device configurations and trial paths are not distributed. Use a compatible distribution package and a reversible, separately tested configuration if experimenting with another version.
+
 **October 28, 2026 recurrence:** after an initially stutter-free night, the owner reported wired-output stuttering during extended Raspberry Pi dual-output playback. Retained logs show increasing audio-graph errors on the previously identified wired branch before switching to Bluetooth-only playback. The tested lifecycle helper remained installed; the later APK/download-page update did not deploy a new Pi audio backend. **Treat the long-duration dual-output bug as open.** The logs narrow the investigation but do not establish the exact cause or measure every audible gap. This report is about the Pi, not an Android overnight failure.
 
 - Intermittent short stutters, repeating fragments, pops and Bluetooth dropouts have occurred. Some failures appeared only after hours of dual-output playback. A clean short test does not establish overnight reliability.
